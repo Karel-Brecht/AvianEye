@@ -1,5 +1,5 @@
 import argparse
-from downloader import download_video
+from downloader import Downloader
 
 
 DEFAULT_YT_URL = "https://www.youtube.com/watch?v=swavE6ZwLJQ"
@@ -13,7 +13,8 @@ def main():
     yt_url = args.yt_url
     print(f"Downloading video from: {yt_url}")
 
-    download_path = download_video(yt_url)
+    downloader = Downloader()
+    download_path = downloader.download_video(yt_url)
     print(f"Video downloaded to: {download_path}")
 
 if __name__ == "__main__":

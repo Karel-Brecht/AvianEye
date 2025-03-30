@@ -35,9 +35,9 @@ while True:
     detections = detector.detect_birds(frame)
     # Visualise detections
     for detection in detections:
-        bb = detection['bbox']
-        conf = detection['confidence']
-        class_name = detection['class_name']
+        bb = detection.bbox
+        conf = detection.confidence
+        class_name = detection.class_name
         # Draw a rectangle around the object
         cv2.rectangle(
             frame,

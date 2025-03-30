@@ -1,4 +1,12 @@
+from dataclasses import dataclass
 from ultralytics import YOLO
+
+@dataclass
+class Detection:
+    """Represents a single detection with its bounding box, confidence, and class name."""
+    bbox: tuple[int, int, int, int]  # (x1, y1, x2, y2)
+    confidence: float
+    class_name: str
 
 class BirdDetector:
     def __init__(self, model_path='model/yolov10n.pt', confidence_threshold=0.10):
@@ -6,7 +14,7 @@ class BirdDetector:
         self.model = YOLO(model_path)
         self.confidence_threshold = confidence_threshold
 
-    def detect_birds(self, frame):
+    def detect_birds(self, frame) -> list[Detection]:
         """Detect birds in a given frame using YOLO."""
         detect_params = self.model.predict(source=[frame], conf=self.confidence_threshold, save=False)
         detections = []
@@ -22,10 +30,10 @@ class BirdDetector:
                 class_name = self.model.names[int(clsID)]
 
                 if 'bird' in class_name.lower():
-                    detections.append({
-                        'bbox': (int(bb[0]), int(bb[1]), int(bb[2]), int(bb[3])),
-                        'confidence': conf,
-                        'class_name': class_name
-                    })
+                    detections.append(Detection(
+                        bbox=(int(bb[0]), int(bb[1]), int(bb[2]), int(bb[3])),
+                        confidence= conf,
+                        class_name= class_name
+                    ))
 
         return detections

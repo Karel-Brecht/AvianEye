@@ -3,10 +3,9 @@ For youtube video input I am using the yt-dlp package. This is, up to today, ver
 
 Install yt-dlp:
 
-bash
-"""
+```bash
 pip install yt-dlp
-"""
+```
 
 I have version _2025.3.27_ installed.
 
@@ -20,6 +19,7 @@ If I were to deploy this in a production environment.
 - Containerize the service in a container with the correct environment installed.
 - Load balancing: -> Kubernetes? Nginx?
 - Choose appropriate video resolution to process
+- Handle different resolutoins and aspect ratios
 - Make logs of video's processed, video duration, nr frames, processing time
 - Scalable?
 - Process video in chuncks?

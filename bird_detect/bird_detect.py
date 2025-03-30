@@ -1,6 +1,8 @@
 import cv2
 from ultralytics import YOLO
 
+CONFIDENCE_THRESHOLD = 0.5
+
 # Loading pretrained YOLO model (will e downloaded on firs run)
 model = YOLO("model/yolov8n.pt", "v8")
 
@@ -25,8 +27,8 @@ while True:
     # Resize the frame
     frame = cv2.resize(frame, (frame_width, frame_height))
 
-    # Do prediction on image, with confidence greater than 80%
-    detect_params = model.predict(source=[frame], conf=0.8, save=False)
+    # Do prediction on image
+    detect_params = model.predict(source=[frame], conf=CONFIDENCE_THRESHOLD, save=False)
 
     DP = detect_params[0].numpy()
 
@@ -44,14 +46,17 @@ while True:
 
         if 'bird' in class_name.lower():
 
+            # Draw a rectangle around the object
             cv2.rectangle(
                 frame,
                 (int(bb[0]), int(bb[1])),
                 (int(bb[2]), int(bb[3])),
                 (0, 255, 0),
+                3,
             )
-
-            font = cv2.FONT_HERSHEY_PLAIN
+            
+            # Add some text labelling to the rectalngle
+            font = cv2.FONT_HERSHEY_SIMPLEX
             cv2.putText(
                 frame,
                 class_name + " " +str(round(conf, 3)) + "%",

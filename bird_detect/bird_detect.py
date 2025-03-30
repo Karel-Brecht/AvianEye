@@ -1,10 +1,10 @@
 import cv2
 from ultralytics import YOLO
 
-CONFIDENCE_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.10
 
 # Loading pretrained YOLO model (will e downloaded on firs run)
-model = YOLO("model/yolov8n.pt", "v8")
+model = YOLO("model/yolov10n.pt")
 
 # Set dimensions of video frames
 frame_width = 1280
@@ -44,28 +44,28 @@ while True:
             # Name of object detected (e.g. 'bird')
             class_name = model.names[int(c)]
 
-        if 'bird' in class_name.lower():
+            if 'bird' in class_name.lower():
 
-            # Draw a rectangle around the object
-            cv2.rectangle(
-                frame,
-                (int(bb[0]), int(bb[1])),
-                (int(bb[2]), int(bb[3])),
-                (0, 255, 0),
-                3,
-            )
-            
-            # Add some text labelling to the rectalngle
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(
-                frame,
-                class_name + " " +str(round(conf, 3)) + "%",
-                (int(bb[0]), int(bb[1]) - 10),
-                font,
-                1,
-                (255, 255, 255),
-                2,
-            )
+                # Draw a rectangle around the object
+                cv2.rectangle(
+                    frame,
+                    (int(bb[0]), int(bb[1])),
+                    (int(bb[2]), int(bb[3])),
+                    (0, 255, 0),
+                    3,
+                )
+
+                # Add some text labelling to the rectalngle
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(
+                    frame,
+                    class_name + " " +str(round(conf, 3)) + "%",
+                    (int(bb[0]), int(bb[1]) - 10),
+                    font,
+                    1,
+                    (255, 255, 255),
+                    2,
+                )
 
     # Display the resulting frame
     cv2.imshow("Object Detection", frame)

@@ -68,4 +68,6 @@ If I were to deploy this in a production environment.
 Adaptations for Real-time analysis
 - Process video in chuncks
 - Inference must be fast, not every model can be used
+- e.g. YOLOv10 should be faster than YOLOv8
 - Maybe process on lower resolution and skip some frames
+- Train lighter and faster model on accurately labeled data provided with the stronger and slower model

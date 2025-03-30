@@ -1,14 +1,18 @@
 import cv2
-from ultralytics import YOLO
+import sys
+import os
 
-CONFIDENCE_THRESHOLD = 0.10
+# Add project root directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Loading pretrained YOLO model (will e downloaded on firs run)
-model = YOLO("model/yolov10n.pt")
+from app.detection import BirdDetector
+
 
 # Set dimensions of video frames
 frame_width = 1280
 frame_height = 720
+
+detector = BirdDetector()
 
 # Video source is MP4 file stored locally
 cap = cv2.VideoCapture("downloads/videos/download.mp4")
@@ -27,45 +31,33 @@ while True:
     # Resize the frame
     frame = cv2.resize(frame, (frame_width, frame_height))
 
-    # Do prediction on image
-    detect_params = model.predict(source=[frame], conf=CONFIDENCE_THRESHOLD, save=False)
+    # Detect birds in the frame
+    detections = detector.detect_birds(frame)
+    # Visualise detections
+    for detection in detections:
+        bb = detection['bbox']
+        conf = detection['confidence']
+        class_name = detection['class_name']
+        # Draw a rectangle around the object
+        cv2.rectangle(
+            frame,
+            (int(bb[0]), int(bb[1])),
+            (int(bb[2]), int(bb[3])),
+            (0, 255, 0),
+            3,
+        )
 
-    DP = detect_params[0].numpy()
-
-    if len(DP) != 0:
-        for i in range(len(detect_params[0])):
-
-            boxes = detect_params[0].boxes
-            box = boxes[i]
-            clsID = box.cls.numpy()[0]
-            conf = box.conf.numpy()[0]
-            bb = box.xyxy.numpy()[0]
-            c = box.cls
-            # Name of object detected (e.g. 'bird')
-            class_name = model.names[int(c)]
-
-            if 'bird' in class_name.lower():
-
-                # Draw a rectangle around the object
-                cv2.rectangle(
-                    frame,
-                    (int(bb[0]), int(bb[1])),
-                    (int(bb[2]), int(bb[3])),
-                    (0, 255, 0),
-                    3,
-                )
-
-                # Add some text labelling to the rectalngle
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                cv2.putText(
-                    frame,
-                    class_name + " " +str(round(conf, 3)) + "%",
-                    (int(bb[0]), int(bb[1]) - 10),
-                    font,
-                    1,
-                    (255, 255, 255),
-                    2,
-                )
+        # Add some text labelling to the rectalngle
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(
+            frame,
+            class_name + " " +str(round(conf, 3)) + "%",
+            (int(bb[0]), int(bb[1]) - 10),
+            font,
+            1,
+            (255, 255, 255),
+            2,
+        )
 
     # Display the resulting frame
     cv2.imshow("Object Detection", frame)

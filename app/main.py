@@ -1,5 +1,5 @@
 import argparse
-from downloader import Downloader
+from .download import Downloader
 
 
 DEFAULT_YT_URL = "https://www.youtube.com/watch?v=swavE6ZwLJQ"

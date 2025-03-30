@@ -22,6 +22,8 @@ If I were to deploy this in a production environment.
 - Handle different resolutoins and aspect ratios
 - Make logs of video's processed, video duration, nr frames, processing time
 - Scalable?
+- Look into licenses of the chosen model, if it can be used for the production environment
+- Optimize model parameters, e.g. set confidence to match desired false-positive - false-negative ratio
 - Process video in chuncks?
 - Relies a lot on the yt-dlp package, there have been occurences that these kind of packages stop working due to Changes on YouTube's side. Important to use a well maintained package.
 - Provide simple API

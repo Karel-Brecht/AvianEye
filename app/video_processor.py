@@ -196,7 +196,7 @@ class VideoProcessor:
                     if prev_classification.tracking_id is None:
                         continue
                         
-                    iou = iou(
+                    iou = calculate_iou(
                         current_classification.detection.bbox,
                         prev_classification.detection.bbox
                     )

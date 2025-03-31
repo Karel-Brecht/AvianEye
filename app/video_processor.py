@@ -52,6 +52,10 @@ class Frame:
         """Removes all classifications from the frame."""
         self.classifications = []
 
+    def remove_detected_species(self):
+        """Removes all detected species from the frame."""
+        self.detected_species = {}
+
 
 class VideoProcessor:
     """Handles the full pipeline: downloading, extracting frames, detecting birds, and classifying species."""
@@ -83,6 +87,9 @@ class VideoProcessor:
     def remove_frames(self):
         """Removes all frames from the video."""
         self.frames = []
+        self.next_track_id = 0
+        self.tracks = {}
+        self.summary_statistics = None
 
     def renew_frames(self):
         """Renews the frames from the video."""
@@ -94,6 +101,9 @@ class VideoProcessor:
                 frame.detections = old_frames[i].detections
                 frame.classifications = old_frames[i].classifications
                 frame.detected_species = old_frames[i].detected_species
+        self.next_track_id = 0
+        self.tracks = {}
+        self.summary_statistics = None
 
     def remove_detections(self):
         """Removes all detections from the video."""
@@ -104,6 +114,14 @@ class VideoProcessor:
         """Removes all classifications from the video."""
         for frame in self.frames:
             frame.remove_classifications()
+
+    def remove_detected_species(self):
+        """Removes all detected species from the video."""
+        for frame in self.frames:
+            frame.remove_detected_species()
+            self.next_track_id = 0
+            self.tracks = {}
+            self.summary_statistics = None
 
     # LOAD VIDEO
 
@@ -144,12 +162,29 @@ class VideoProcessor:
         if annotate:
             self.annotate_detections()
 
-    def classify_birds(self, annotate: bool = False):
-        """Classifies the detected birds in each frame."""  
+    def classify_birds(self, padding: float = -1, annotate: bool = False):
+        """
+        Classifies the detected birds in each frame.
+        
+        Args:
+            padding (float): Padding to add around the detected bird for classification. 
+                             If negative, no padding is added. Otherwise, it adds a percentage of the bounding box size.
+            annotate (bool): Whether to annotate the classifications on the frames.
+        """  
         for frame in self.frames:
             for detection in frame.detections:
                 # Crop the detected bird from the frame
                 x1, y1, x2, y2 = detection.bbox
+
+                if padding > 0:
+                    # Add percentual padding where possible
+                    h_padding = int((y2 - y1) * padding)
+                    w_padding = int((x2 - x1) * padding)
+                    y1 = max(0, y1 - h_padding)
+                    y2 = min(frame.image.shape[0], y2 + h_padding)
+                    x1 = max(0, x1 - w_padding)
+                    x2 = min(frame.image.shape[1], x2 + w_padding)
+
                 bird_image = frame.image[y1:y2, x1:x2]
 
                 # Convert to PIL Image for classification
@@ -205,7 +240,7 @@ class VideoProcessor:
                         best_iou = iou
                         best_track_id = prev_classification.tracking_id
 
-                # TODO: only onne classification per track id per frame
+                # TODO: only one classification per track id per frame, take the one with max iou
                 
                 if best_track_id is not None:
                     # Assign existing track ID

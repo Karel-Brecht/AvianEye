@@ -26,8 +26,8 @@ img = img.convert("RGB")
 # model = EfficientNetForImageClassification.from_pretrained("dennisjooo/Birds-Classifier-EfficientNetB2")
 
 # Loading the model and preprocessor from local directory
-preprocessor = EfficientNetImageProcessor.from_pretrained("./local_model")
-model = EfficientNetForImageClassification.from_pretrained("./local_model")
+preprocessor = EfficientNetImageProcessor.from_pretrained("models/classification_model")
+model = EfficientNetForImageClassification.from_pretrained("models/classification_model")
 
 # Preprocessing the input
 inputs = preprocessor(img, return_tensors="pt")

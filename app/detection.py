@@ -9,7 +9,7 @@ class Detection:
     class_name: str
 
 class BirdDetector:
-    def __init__(self, model_path='model/yolov10n.pt', confidence_threshold=0.10):
+    def __init__(self, model_path='models/detection_model/yolov10n.pt', confidence_threshold=0.10):
         """Initialize the BirdDetector with a YOLO model."""
         self.model = YOLO(model_path)
         self.confidence_threshold = confidence_threshold

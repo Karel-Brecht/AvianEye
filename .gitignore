@@ -1,6 +1,5 @@
 venv/
 *.mp4
 __pycache__/
-*.pt
 datasets/
 *.png

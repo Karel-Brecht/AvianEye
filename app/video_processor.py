@@ -24,6 +24,7 @@ class Frame:
         self.image = image
         self.detections: list[Detection] = []
         self.classifications: list[Classification] = []  # List of classifications (e.g., bird species)
+        self.detected_species: dict[str, int] = {}  # Dictionary to store species counts
 
     def add_detection(self, detection: Detection):
         """Adds a detection to the frame."""
@@ -63,6 +64,17 @@ class VideoProcessor:
     def remove_frames(self):
         """Removes all frames from the video."""
         self.frames = []
+
+    def renew_frames(self):
+        """Renews the frames from the video."""
+        old_frames = self.frames
+        self.frames = []
+        self.extract_frames()
+        for i, frame in enumerate(self.frames):
+            if i < len(old_frames):
+                frame.detections = old_frames[i].detections
+                frame.classifications = old_frames[i].classifications
+                frame.detected_species = old_frames[i].detected_species
 
     def remove_detections(self):
         """Removes all detections from the video."""
@@ -131,6 +143,17 @@ class VideoProcessor:
         if annotate:
             self.annotate_classifications()
 
+    def process_observations(self):
+        """Processes the observations to count species."""
+        for frame in self.frames:
+            for classification in frame.classifications:
+                species = classification.predicted_cls
+                if species not in frame.detected_species:
+                    frame.detected_species[species] = 0
+                frame.detected_species[species] += 1
+            # order dictionary by key
+            frame.detected_species = dict(sorted(frame.detected_species.items()))
+
     # ANNOTATIONS
 
     def annotate_detections(self):
@@ -175,13 +198,29 @@ class VideoProcessor:
                     2
                 )
 
+    def annotate_species_counts(self):
+        """Annotates the species counts on the right side of the frames."""
+        for frame in self.frames:
+            y_offset = 50
+            for species, count in frame.detected_species.items():
+                cv2.putText(
+                    frame.image,
+                    f"{species}: {count}",
+                    (10, y_offset),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1, 
+                    (255, 255, 255),
+                    2
+                )
+                y_offset += 30
+
     def annotate_frame_ids(self):
         """Annotates the frame IDs on the frames."""
         for frame in self.frames:
             cv2.putText(
                 frame.image,
                 f"Frame ID: {frame.frame_id}",
-                (10, 30),
+                (self.size[0] - 300, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1, 
                 (255, 255, 255),
@@ -217,3 +256,22 @@ class VideoProcessor:
 
         out.release()
         print(f"Saved processed video to {output_path}")
+
+    # RUN
+
+    def run(self, output_path: str, number_frames: bool = False):
+        """Main method to run the entire pipeline."""
+        self.download_video()
+        self.extract_frames()
+
+        self.detect_birds(annotate=False)
+        self.classify_birds(annotate=False)
+        self.process_observations()
+
+        self.annotate_classifications()
+        self.annotate_species_counts()
+
+        if number_frames:
+            self.annotate_frame_ids()
+
+        self.export_video(output_path)

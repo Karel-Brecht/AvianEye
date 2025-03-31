@@ -199,20 +199,36 @@ class VideoProcessor:
                 )
 
     def annotate_species_counts(self):
-        """Annotates the species counts on the right side of the frames."""
+        """Annotates the species counts on the right side of the frames with a grayish background box."""
         for frame in self.frames:
-            y_offset = 50
-            for species, count in frame.detected_species.items():
+            # Draw a grayish background box
+            box_width = 300
+            box_height = 200
+            top_left = (10, 10)
+            bottom_right = (top_left[0] + box_width, top_left[1] + box_height)
+
+            # Draw the box by merging part of the image with a grayish rectangle
+            # This creates a semi-transparent effect
+            sub_img = frame.image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
+            box_rect = np.ones((box_height, box_width, 3), dtype=np.uint8) * 50
+            res = cv2.addWeighted(sub_img, 0.25, box_rect, 0.75, 1.0)
+            frame.image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]] = res
+
+            # Add species counts text
+            y_offset = 40
+            for i, (species, count) in enumerate(frame.detected_species.items()):
+                if i >= 5:  # Limit to 5 species
+                    break
                 cv2.putText(
                     frame.image,
                     f"{species}: {count}",
-                    (10, y_offset),
+                    (top_left[0] + 10, top_left[1] + y_offset),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    1, 
-                    (255, 255, 255),
-                    2
+                    0.6,  # Smaller font size
+                    (255, 255, 255),  # White text
+                    1
                 )
-                y_offset += 30
+                y_offset += 25
 
     def annotate_frame_ids(self):
         """Annotates the frame IDs on the frames."""

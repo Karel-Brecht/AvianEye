@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 import cv2
+from PIL import Image
+
 from .download import Downloader
 from .detection import BirdDetector, Detection
+from .classification import BirdClassifier
 
         
 @dataclass
@@ -37,7 +40,7 @@ class Frame:
 class VideoProcessor:
     """Handles the full pipeline: downloading, extracting frames, detecting birds, and classifying species."""
 
-    def __init__(self, video_link: str, downloader: Downloader, detector_model: BirdDetector, classifier_model):
+    def __init__(self, video_link: str, downloader: Downloader, detector_model: BirdDetector, classifier_model: BirdClassifier):
         self.size = (1280, 720)
 
         self.video_link = video_link
@@ -74,17 +77,33 @@ class VideoProcessor:
             frame_id += 1
         cap.release()
 
-    def detect_birds(self, visualise: bool = False):
+    def detect_birds(self, annotate: bool = False):
         """Runs object detection on each frame to detect birds."""
         for frame in self.frames:
             detections = self.detector_model.detect_birds(frame.image)  # Returns [(bbox, confidence), ...]
             for detection in detections:
                 frame.add_detection(detection)
 
-        if visualise:
-            self.visualise_detections()
+        if annotate:
+            self.annotate_detections()
 
-    def visualise_detections(self):
+    def classify_birds(self):
+        """Classifies the detected birds in each frame."""  
+        for frame in self.frames:
+            for detection in frame.detections:
+                # Crop the detected bird from the frame
+                x1, y1, x2, y2 = detection.bbox
+                bird_image = frame.image[y1:y2, x1:x2]
+
+                # Convert to PIL Image for classification
+                bird_image_pil = cv2.cvtColor(bird_image, cv2.COLOR_BGR2RGB)
+                bird_image_pil = Image.fromarray(bird_image_pil)
+
+                predicted_cls, predicted_prob, all_probs = self.classifier_model.classify(bird_image_pil)
+                frame.add_classification(detection, predicted_cls, predicted_prob, all_probs)
+
+
+    def annotate_detections(self):
         """Runs object detection on each frame to detect birds."""
         for frame in self.frames:
             for detection in frame.detections:

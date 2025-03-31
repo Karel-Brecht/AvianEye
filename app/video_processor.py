@@ -203,11 +203,8 @@ class VideoProcessor:
 
 ###########################################################################################################################
 
-    
-
-    
     def assign_tracking_ids(self):
-        """Assign tracking IDs to detections across frames based on IoU."""
+        """Assign tracking IDs to detections across frames based on IoU, ensuring only one classification per track ID per frame."""
         if not self.frames:
             return
             
@@ -223,34 +220,56 @@ class VideoProcessor:
             current_frame = self.frames[i]
             prev_frame = self.frames[i-1]
             
-            # Find matches for each detection in current frame
-            for current_classification in current_frame.classifications:
+            # Step 1: Calculate all possible matches between current and previous frames
+            possible_matches = []
+            
+            for curr_idx, current_classification in enumerate(current_frame.classifications):
                 if current_classification.detection.confidence < self.min_detection_confidence:
                     continue
-                    
-                best_iou = 0.0
-                best_track_id = None
                 
                 for prev_classification in prev_frame.classifications:
                     if prev_classification.tracking_id is None:
                         continue
-                        
+                    
                     iou = calculate_iou(
                         current_classification.detection.bbox,
                         prev_classification.detection.bbox
                     )
                     
-                    if iou > best_iou and iou > self.iou_threshold:
-                        best_iou = iou
-                        best_track_id = prev_classification.tracking_id
-
-                # TODO: only one classification per track id per frame, take the one with max iou
+                    if iou > self.iou_threshold:
+                        possible_matches.append((
+                            curr_idx, 
+                            prev_classification.tracking_id, 
+                            iou
+                        ))
+            
+            # Step 2: Sort matches by IoU (highest first)
+            possible_matches.sort(key=lambda x: x[2], reverse=True)
+            
+            # Step 3: Assign track IDs, ensuring one classification per track ID
+            assigned_curr_idxs = set()
+            assigned_track_ids = set()
+            
+            for curr_idx, track_id, iou in possible_matches:
+                # Skip if this current classification or track ID has already been assigned
+                if curr_idx in assigned_curr_idxs or track_id in assigned_track_ids:
+                    continue
                 
-                if best_track_id is not None:
-                    # Assign existing track ID
-                    current_classification.tracking_id = best_track_id
-                    self.tracks[best_track_id].append(current_classification)
-                else:
+                # Assign track ID to current classification
+                current_classification = current_frame.classifications[curr_idx]
+                current_classification.tracking_id = track_id
+                
+                # Update tracking information
+                self.tracks[track_id].append(current_classification)
+                
+                # Mark as assigned
+                assigned_curr_idxs.add(curr_idx)
+                assigned_track_ids.add(track_id)
+            
+            # Step 4: Create new tracks for unassigned detections
+            for curr_idx, current_classification in enumerate(current_frame.classifications):
+                if (curr_idx not in assigned_curr_idxs and 
+                    current_classification.detection.confidence >= self.min_detection_confidence):
                     # Create new track
                     current_classification.tracking_id = self.next_track_id
                     self.tracks[self.next_track_id] = [current_classification]
@@ -258,7 +277,17 @@ class VideoProcessor:
     
     def smooth_classifications(self):
         """Apply temporal smoothing to classifications based on tracking data."""
+        tracks_to_remove = []
         for track_id, classifications in self.tracks.items():
+
+            # If tracking is too short, remove it
+            if len(classifications) < 3:
+                # print(f"Track {track_id} is too short, removing it.")
+                for classification in classifications:
+                    classification.tracking_id = None
+                tracks_to_remove.append(track_id)
+                continue
+
             # If track has only one detection, no smoothing needed
             if len(classifications) <= 1:
                 continue
@@ -285,9 +314,11 @@ class VideoProcessor:
                     classification.predicted_cls = best_class[0]
                     classification.predicted_prob = best_class[1] / len(window)
 
-                # TODO: remove tracks that are too short or too ambiguous
-
-
+                # TODO: remove tracks that too ambiguous
+        
+        # Remove the short tracks from the tracks dictionary
+        for track_id in tracks_to_remove:
+            del self.tracks[track_id]
 
 
     
@@ -348,13 +379,10 @@ class VideoProcessor:
         
         for track_id, classifications in self.tracks.items():
             # Consider only classifications with sufficient confidence
-            valid_classifications = [
-                c for c in classifications 
-                if c.detection.confidence >= self.min_detection_confidence 
-                and c.predicted_prob >= self.min_classification_confidence
-            ]
+            valid_classifications = [c for c in classifications if c.taken]
             
-            if not valid_classifications:
+            if len(valid_classifications) == 0:
+                print(f"Track {track_id} has no valid classifications.")
                 continue
                 
             # Count votes for most frequent species in this track
@@ -376,6 +404,7 @@ class VideoProcessor:
         # Store summary statistics
         self.summary_statistics = {
             "total_unique_birds": len(unique_tracks),
+            "total_unique_species": len(species_counts),
             "species_counts": dict(sorted(species_counts.items())),
             "average_confidence": {
                 species: sum(confs)/len(confs) if confs else 0

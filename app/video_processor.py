@@ -81,6 +81,8 @@ class VideoProcessor:
         self.temporal_window_size = 30  # Number of frames to consider for temporal smoothing # TODO: fine-tune this a bit
         self.min_detection_confidence = 0.10  # Minimum detection confidence # TODO: is already set in detector model
         self.min_classification_confidence = 0.0  # Minimum classification confidence # TODO: fine-tune this a bit
+        self.min_track_seconds = 0.30  # Minimum length of a track in seconds # TODO: fine-tune this a bit
+        self.min_track_frames = None
         
         # Track information
         self.next_track_id = 0
@@ -140,6 +142,7 @@ class VideoProcessor:
         """Extracts frames from the video file."""
         cap = cv2.VideoCapture(self.video_path)
         self.frame_rate = cap.get(cv2.CAP_PROP_FPS)
+        self.min_track_frames = int(self.frame_rate * self.min_track_seconds)
         frame_id = 0
 
         while True:
@@ -281,7 +284,7 @@ class VideoProcessor:
         for track_id, classifications in self.tracks.items():
 
             # If tracking is too short, remove it
-            if len(classifications) < 3:
+            if len(classifications) < self.min_track_frames:
                 # print(f"Track {track_id} is too short, removing it.")
                 for classification in classifications:
                     classification.tracking_id = None
@@ -382,7 +385,6 @@ class VideoProcessor:
             valid_classifications = [c for c in classifications if c.taken]
             
             if len(valid_classifications) == 0:
-                print(f"Track {track_id} has no valid classifications.")
                 continue
                 
             # Count votes for most frequent species in this track

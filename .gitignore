@@ -5,3 +5,4 @@ datasets/
 *.png
 *.jpg
 *.pkl
+notebooks/*.json

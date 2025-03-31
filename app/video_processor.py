@@ -35,6 +35,14 @@ class Frame:
         classification = Classification(detection, predicted_cls, predicted_prob, all_probs)
         self.classifications.append(classification)
         return classification
+    
+    def remove_detections(self):
+        """Removes all detections from the frame."""
+        self.detections = []
+
+    def remove_classifications(self):
+        """Removes all classifications from the frame."""
+        self.classifications = []
 
 
 class VideoProcessor:
@@ -51,6 +59,20 @@ class VideoProcessor:
         self.video_path = None
         self.frames: list[Frame] = []
         self.frame_rate = None
+
+    def remove_frames(self):
+        """Removes all frames from the video."""
+        self.frames = []
+
+    def remove_detections(self):
+        """Removes all detections from the video."""
+        for frame in self.frames:
+            frame.remove_detections()
+
+    def remove_classifications(self):
+        """Removes all classifications from the video."""
+        for frame in self.frames:
+            frame.remove_classifications()
 
     def download_video(self):
         """Downloads the video from the given link."""

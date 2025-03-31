@@ -55,6 +55,10 @@ class Frame:
     def remove_detected_species(self):
         """Removes all detected species from the frame."""
         self.detected_species = {}
+        for classification in self.classifications:
+            classification.taken = False
+            classification.taken_cls = None
+            classification.tracking_id = None
 
 
 class VideoProcessor:

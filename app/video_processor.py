@@ -22,8 +22,8 @@ class Frame:
     def __init__(self, frame_id: int, image):
         self.frame_id = frame_id
         self.image = image
-        self.detections = []
-        self.classifications = []  # List of classifications (e.g., bird species)
+        self.detections: list[Detection] = []
+        self.classifications: list[Classification] = []  # List of classifications (e.g., bird species)
 
     def add_detection(self, detection: Detection):
         """Adds a detection to the frame."""
@@ -74,6 +74,8 @@ class VideoProcessor:
         for frame in self.frames:
             frame.remove_classifications()
 
+    # LOAD VIDEO
+
     def download_video(self):
         """Downloads the video from the given link."""
         self.video_path = self.downloader.download_video(self.video_link)
@@ -99,6 +101,8 @@ class VideoProcessor:
             frame_id += 1
         cap.release()
 
+    # PROCESSING
+
     def detect_birds(self, annotate: bool = False):
         """Runs object detection on each frame to detect birds."""
         for frame in self.frames:
@@ -109,7 +113,7 @@ class VideoProcessor:
         if annotate:
             self.annotate_detections()
 
-    def classify_birds(self):
+    def classify_birds(self, annotate: bool = False):
         """Classifies the detected birds in each frame."""  
         for frame in self.frames:
             for detection in frame.detections:
@@ -124,13 +128,67 @@ class VideoProcessor:
                 predicted_cls, predicted_prob, all_probs = self.classifier_model.classify(bird_image_pil)
                 frame.add_classification(detection, predicted_cls, predicted_prob, all_probs)
 
+        if annotate:
+            self.annotate_classifications()
+
+    # ANNOTATIONS
 
     def annotate_detections(self):
         """Runs object detection on each frame to detect birds."""
         for frame in self.frames:
             for detection in frame.detections:
-                cv2.rectangle(frame.image, (detection.bbox[0], detection.bbox[1]), (detection.bbox[2], detection.bbox[3]), (0, 255, 0), 2)
-                cv2.putText(frame.image, f"{detection.class_name} {detection.confidence:.2f}", (detection.bbox[0], detection.bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                cv2.rectangle(
+                    frame.image,
+                    (detection.bbox[0],detection.bbox[1]),
+                    (detection.bbox[2], detection.bbox[3]),
+                    (0, 255, 0),
+                    2
+                )
+                cv2.putText(
+                    frame.image,
+                    f"{detection.class_name} {detection.confidence:.2f}",
+                    (detection.bbox[0], detection.bbox[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1, 
+                    (255, 255, 255),
+                    2
+                )
+
+    def annotate_classifications(self):
+        """Annotates the classifications on the frames."""
+        for frame in self.frames:
+            for classification in frame.classifications:
+                cv2.rectangle(
+                    frame.image,
+                    (classification.detection.bbox[0], classification.detection.bbox[1]),
+                    (classification.detection.bbox[2], classification.detection.bbox[3]),
+                    (255, 0, 0),
+                    2
+                )
+                cv2.putText(
+                    frame.image,
+                    f"{classification.predicted_cls} {classification.predicted_prob:.2f}",
+                    (classification.detection.bbox[0], classification.detection.bbox[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1, 
+                    (255, 255, 255),
+                    2
+                )
+
+    def annotate_frame_ids(self):
+        """Annotates the frame IDs on the frames."""
+        for frame in self.frames:
+            cv2.putText(
+                frame.image,
+                f"Frame ID: {frame.frame_id}",
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1, 
+                (255, 255, 255),
+                2
+            )
+                
+    # EXPORTS
 
     def export_frames(self, output_dir: str):
         """Exports the frames with detections and classifications to the specified directory."""
@@ -138,6 +196,16 @@ class VideoProcessor:
             output_path = f"{output_dir}/frame_{frame.frame_id}.jpg"
             cv2.imwrite(output_path, frame.image)
             print(f"Saved frame {frame.frame_id} to {output_path}")
+
+    def export_frame(self, frame_id: int, output_dir: str):
+        """Exports a single frame with detections and classifications."""
+        if frame_id < len(self.frames):
+            frame = self.frames[frame_id]
+            output_path = f"{output_dir}/frame_{frame.frame_id}.jpg"
+            cv2.imwrite(output_path, frame.image)
+            print(f"Saved frame {frame_id} to {output_path}")
+        else:
+            print(f"Frame {frame_id} does not exist.")
 
     def export_video(self, output_path: str):
         """Exports the processed video with detections and classifications."""

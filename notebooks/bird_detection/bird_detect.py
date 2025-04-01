@@ -3,7 +3,7 @@ import sys
 import os
 
 # Add project root directory to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from app.operations.detection import BirdDetector
 

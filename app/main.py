@@ -1,8 +1,14 @@
 import argparse
-from download import Downloader
-from detection import BirdDetector
-from classification import BirdClassifier
-from video_processor import VideoProcessor
+import sys
+from pathlib import Path
+
+# Add parent directory to Python path to resolve imports
+sys.path.append(str(Path(__file__).parent.parent))
+
+from app.operations.download import Downloader
+from app.operations.detection import BirdDetector
+from app.operations.classification import BirdClassifier
+from app.models.video_processor import VideoProcessor
 
 
 DEFAULT_YT_URL = "https://www.youtube.com/watch?v=swavE6ZwLJQ"

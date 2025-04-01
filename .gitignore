@@ -6,3 +6,4 @@ datasets/
 *.jpg
 *.pkl
 notebooks/*.json
+summary_statistics*.json

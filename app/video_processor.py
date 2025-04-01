@@ -60,9 +60,6 @@ class Frame:
             if classification.is_interpolated:
                 # Remove classification from the frame
                 self.classifications.remove(classification)
-                # # Remove from detections as well # TODO: should interpolations be added to detections? not the case right now
-                # self.detections.remove(classification.detection)
-                # Entirely delete the classification
                 del classification
             else:
                 classification.taken = False
@@ -296,8 +293,6 @@ class VideoProcessor:
                     self.track_frame_indices[self.next_track_id] = [i]  # Store frame index
                     self.next_track_id += 1
 
-        # TODO: Bridge gaps in tracking IDs (e.g., if a bird is not detected for a few frames)
-
     
     def bridge_track_gaps(self):
         """Bridge short gaps in tracks by interpolating detections and classifications."""
@@ -444,8 +439,6 @@ class VideoProcessor:
             
             # Add interpolated classification to frame
             frame.classifications.append(interpolated_classification)
-
-            # TODO: add detection to frame as well?
             
             # Add to track
             insert_idx = len(self.tracks[track_id1])
@@ -522,10 +515,6 @@ class VideoProcessor:
                 # Get class with highest votes
                 best_class = max(class_votes.items(), key=lambda x: x[1])
                 
-                # Only update if the weighted vote is confident enough
-                # TODO: This should just always be done
-                # if best_class[1] / len(window) >= self.min_classification_confidence:
-                # TODO: should this update the predicted_cls and predicted_prob or the taken_cls?
                 classification.predicted_cls = best_class[0]
                 classification.predicted_prob = best_class[1] / len(window)
         
@@ -537,6 +526,9 @@ class VideoProcessor:
                 del self.track_frame_indices[track_id]
 
         # TODO: remove tracks that are too ambiguous
+
+        # TODO: remove dupplicate detections in the same frame
+        # (e.g., if two detections are too close to each other and have about the same class predictions)
     
     def process_observations(self):
         """Processes the observations to count species with temporal consistency."""
@@ -555,24 +547,10 @@ class VideoProcessor:
             frame.detected_species = {}
             
             # Process only classifications with tracking IDs and sufficient confidence
-            processed_track_ids = set() # TODO: this is redundant if there is only one classification per track ID per frame
             for classification in frame.classifications:
                 # Skip if no tracking ID or already processed this track in this frame
-                if (classification.tracking_id is None or
-                    classification.tracking_id in processed_track_ids):
+                if (classification.tracking_id is None):
                     continue
-
-                # TODO: I think this should not happen here, this should be done in the smoother
-                # # Skip if no tracking ID or already processed this track in this frame
-                # if (classification.tracking_id is None or 
-                #     classification.tracking_id in processed_track_ids or
-                #     (not classification.is_interpolated and 
-                #      classification.detection.confidence < self.min_detection_confidence) or
-                #     classification.predicted_prob < self.min_classification_confidence):
-                #     continue
-                    
-                # Mark this track as processed for this frame
-                processed_track_ids.add(classification.tracking_id)
                 
                 # Update species count
                 species = classification.predicted_cls

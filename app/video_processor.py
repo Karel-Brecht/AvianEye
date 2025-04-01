@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 from collections import defaultdict
 from dataclasses import dataclass
@@ -282,16 +283,72 @@ class VideoProcessor:
                 # Mark as assigned
                 assigned_curr_idxs.add(curr_idx)
                 assigned_track_ids.add(track_id)
-            
-            # Step 4: Create new tracks for unassigned detections
+
+
+            # Step 4: Create new tracks for unassigned detections that are not duplicate
+            classifications_to_assign = {}
             for curr_idx, current_classification in enumerate(current_frame.classifications):
                 if (curr_idx not in assigned_curr_idxs and 
                     current_classification.detection.confidence >= self.min_detection_confidence):
-                    # Create new track
-                    current_classification.tracking_id = self.next_track_id
-                    self.tracks[self.next_track_id] = [current_classification]
-                    self.track_frame_indices[self.next_track_id] = [i]  # Store frame index
-                    self.next_track_id += 1
+
+                    # print(f"frame: {i}, curridx: {curr_idx}")
+
+                    abort = False
+                    # Calculate all ious with assigned
+                    for ref_idx, ref_classification in enumerate(current_frame.classifications):
+                        if ref_idx not in assigned_curr_idxs or ref_idx == curr_idx:
+                            continue
+                        # print(f"frame: {i}, ref_idx: {ref_idx}, curr_idx: {curr_idx}")
+
+                        iou = calculate_iou(
+                            current_classification.detection.bbox,
+                            ref_classification.detection.bbox
+                        )
+                        if iou > 0.5: # TODO: parametrize
+                            abort = True
+                            break
+                    if abort:
+                        continue
+
+                    # Calculate all ious with to be assigned classifications
+                    for ref_idx, ref_classification in classifications_to_assign.items():
+                        if ref_idx == curr_idx: # TODO: I think this normally can't happen
+                            continue
+                        iou = calculate_iou(
+                            current_classification.detection.bbox,
+                            ref_classification.detection.bbox
+                        )
+                        if iou > 0.5: # TODO: parametrize
+                            # calculate similarity between classe probabilities
+                            class_similarity = 0.0
+                            for class_name, prob in current_classification.all_probs.items():
+                                if class_name in ref_classification.all_probs:
+                                    class_similarity += min(prob, ref_classification.all_probs[class_name])
+
+                            # Combined score for IoU and class similarity
+                            duplicate_score = iou * 0.7 + class_similarity * 0.3 # TODO: parametrize all weights
+                            if duplicate_score > 0.4:  # TODO: Different threshold for considering it a duplicate
+                                if current_classification.predicted_prob > ref_classification.predicted_prob:
+                                    classifications_to_assign[curr_idx] = current_classification
+                                    # remove ref_classification from the list of classifications to be assigned
+                                    del classifications_to_assign[ref_idx]
+                                abort = True
+                                break
+                    if abort:
+                        continue
+                    # Add to classifications to assign
+                    classifications_to_assign[curr_idx] = current_classification
+            
+            for curr_idx, current_classification in classifications_to_assign.items():
+                if curr_idx in assigned_curr_idxs: # TODO: I think this is redundant
+                    continue
+                # Create new track
+                current_classification.tracking_id = self.next_track_id
+                self.tracks[self.next_track_id] = [current_classification]
+                self.track_frame_indices[self.next_track_id] = [i]  # Store frame index
+                self.next_track_id += 1
+
+    # TODO: maybe remove extra duplicate detections if bbox corners line up too well
 
     
     def bridge_track_gaps(self):
@@ -526,9 +583,6 @@ class VideoProcessor:
                 del self.track_frame_indices[track_id]
 
         # TODO: remove tracks that are too ambiguous
-
-        # TODO: remove dupplicate detections in the same frame
-        # (e.g., if two detections are too close to each other and have about the same class predictions)
     
     def process_observations(self):
         """Processes the observations to count species with temporal consistency."""
@@ -770,7 +824,7 @@ class VideoProcessor:
     def export_video(self, output_path: str):
         """Exports the processed video with detections and classifications."""
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter(output_path, fourcc, self.frame_rate, self.size)
+        out = cv2.VideoWriter(output_path, fourcc, self.frame_rate, self.size) # TODO: what if output path doesn't end on .mp4?
 
         for frame in self.frames:
             out.write(frame.image)
@@ -780,7 +834,7 @@ class VideoProcessor:
 
     # RUN
 
-    def run(self, output_path: str, number_frames: bool = False):
+    def run(self, output_path: str, frame_ids: bool = False):
         """Main method to run the entire pipeline."""
         self.download_video()
         self.extract_frames()
@@ -789,10 +843,15 @@ class VideoProcessor:
         self.classify_birds(annotate=False)
         self.process_observations()
 
-        self.annotate_classifications()
+        self.get_summary_statistics()
+        # Export summary statistics to JSON file
+        with open("summary_statistics1.json", "w") as f:
+            json.dump(self.summary_statistics, f, indent=4)
+
+        self.annotate_species()
         self.annotate_species_counts()
 
-        if number_frames:
+        if frame_ids:
             self.annotate_frame_ids()
 
         self.export_video(output_path)

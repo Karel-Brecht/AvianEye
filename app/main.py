@@ -1,5 +1,8 @@
 import argparse
-from .download import Downloader
+from download import Downloader
+from detection import BirdDetector
+from classification import BirdClassifier
+from video_processor import VideoProcessor
 
 
 DEFAULT_YT_URL = "https://www.youtube.com/watch?v=swavE6ZwLJQ"
@@ -13,9 +16,13 @@ def main():
     yt_url = args.yt_url
     print(f"Downloading video from: {yt_url}")
 
-    downloader = Downloader()
-    download_path = downloader.download_video(yt_url)
-    print(f"Video downloaded to: {download_path}")
+    downloader = Downloader("downloads/videos")
+    detector = BirdDetector("models/detection_model/yolov10n.pt")
+    classfier = BirdClassifier("models/classification_model")
+
+    vp = VideoProcessor(yt_url, downloader, detector, classfier)
+
+    vp.run("./outputvidrun.mp4", frame_ids=True)
 
 if __name__ == "__main__":
     main()

@@ -112,6 +112,8 @@ class VideoProcessor:
 
         self.export_video(output_path) # TODO: return success or failure
 
+        self.downloader.cleanup()  # Clean up the downloaded video file
+
     # LOAD VIDEO
 
     def download_video(self):

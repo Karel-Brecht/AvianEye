@@ -27,7 +27,7 @@ def main():
     print(f"Downloading video from: {yt_url}")
     print(f"Output will be saved to: {output_path}")
 
-    downloader = Downloader("downloads/videos")
+    downloader = Downloader()
     detector = BirdDetector("models/detection_model/yolov10n.pt")
     classfier = BirdClassifier("models/classification_model")
 

@@ -18,15 +18,15 @@ class VideoProcessor:
         self,
         video_link: str,
         downloader: Downloader,
-        detector_model: BirdDetector,
-        classifier_model: BirdClassifier,
+        detector: BirdDetector,
+        classifier: BirdClassifier,
     ):
         self.size = (1280, 720)
 
         self.video_link = video_link
         self.downloader = downloader
-        self.detector_model = detector_model
-        self.classifier_model = classifier_model
+        self.detector = detector
+        self.classifier = classifier
 
         self.annotator = Annotator()
 
@@ -150,7 +150,7 @@ class VideoProcessor:
     def detect_birds(self, annotate: bool = False):
         """Runs object detection on each frame to detect birds."""
         for frame in self.frames:
-            detections = self.detector_model.detect_birds(
+            detections = self.detector.detect_birds(
                 frame.image
             )  # Returns [(bbox, confidence), ...]
             for detection in detections:
@@ -189,7 +189,7 @@ class VideoProcessor:
                 bird_image_pil = Image.fromarray(bird_image_pil)
 
                 predicted_cls, predicted_prob, all_probs = (
-                    self.classifier_model.classify(bird_image_pil)
+                    self.classifier.classify(bird_image_pil)
                 )
                 frame.add_observation(
                     detection, predicted_cls, predicted_prob, all_probs

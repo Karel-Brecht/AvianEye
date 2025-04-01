@@ -9,6 +9,7 @@ from ..operations.classification import BirdClassifier
 from ..operations.tracking import Tracker
 from ..visualization.annotation import Annotator
 from ..models.data_classes import Frame
+from ..utils.utils import add_audio_to_video
 
 
 class VideoProcessor:
@@ -321,3 +322,5 @@ class VideoProcessor:
 
         out.release()
         print(f"Saved processed video to {output_path}")
+
+        add_audio_to_video(self.video_path, output_path)

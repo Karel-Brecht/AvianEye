@@ -45,6 +45,26 @@ pip install ultralytics
 
 I have version _8.3.98_ installed.
 
+# ffmpeg
+
+## Installation on windows.
+[text](https://ffmpeg.org/download.html)
+following this guide:
+[text](https://phoenixnap.com/kb/ffmpeg-windows)
+- Download zip file
+- Extract zip file
+- Rename to ffmpeg
+- Add FFmpeg to environment Variable Path under User variables : add `c:\\ffmpeg\bin`
+- Restart your vscode or terminal for the changes to take effect.
+- Verify correct environment by executing the following command in the terminal 
+```bash
+ffmpeg
+```
+
+## On mac or Ubuntu
+There seems to be an easier way for ubuntu and macOS by using respectively `apt install ffmpeg` or `brew install ffmpeg`.
+But i haven't tried this out myself.
+
 # Next Steps
 
 Potential improvements and future work to enhance capabilities and performance.

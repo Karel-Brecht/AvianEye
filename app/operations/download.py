@@ -2,12 +2,14 @@ import os
 import yt_dlp
 
 class Downloader:
-    def __init__(self, download_path='downloads/videos', filename='download.mp4'):
+    def __init__(self, download_path='downloads/videos', filename='download.mp4'): # TODO: handle doawnload path
         self.download_path = download_path
         self.filename = filename
         self.file_path = os.path.join(download_path, filename)
         self.ydl_options = {
-            'outtmpl': self.file_path,
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',  # Ensures MP4 format
+            'outtmpl': '%(title)s.%(ext)s',  # Saves as title.mp4
+            'merge_output_format': 'mp4',  # Ensures final file is MP4 if merging is needed
         }
 
     def download_video(self, video_url: str) -> str:

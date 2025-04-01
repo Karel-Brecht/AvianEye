@@ -1,3 +1,7 @@
+import os
+import subprocess
+import tempfile
+
 def calculate_iou(bbox1, bbox2):
     """Calculate the Intersection over Union (IoU) of two bounding boxes."""
     x1_1, y1_1, x2_1, y2_1 = bbox1
@@ -20,3 +24,47 @@ def calculate_iou(bbox1, bbox2):
     union_area = bbox1_area + bbox2_area - intersection_area
     
     return intersection_area / union_area if union_area > 0 else 0
+
+
+def add_audio_to_video(source_video_path: str, target_video_path: str):
+    """
+    Adds audio from source_video_path to the target_video_path.
+    Overwrites the target video with the new version containing audio.
+    """
+    
+    if not os.path.exists(source_video_path):
+        print(f"Warning: Source video file {source_video_path} not found. Adding audio failed.")
+        return
+        
+    # Create a temporary file for the output with audio using mkstemp
+    temp_output_fd, temp_output = tempfile.mkstemp(suffix='.mp4')
+    os.close(temp_output_fd)  # Close the file descriptor, we only need the file name
+    
+    cmd = [
+        'ffmpeg',
+        '-i', target_video_path,        # Input video (no audio)
+        '-i', source_video_path,        # Input original video (with audio)
+        '-map', '0:v',                  # Use video from first input
+        '-map', '1:a',                  # Use audio from second input
+        '-c:v', 'copy',                 # Copy the video stream
+        '-c:a', 'copy',                 # Copy the audio stream
+        '-y',                           # Overwrite output file if it exists
+        temp_output                     # Temporary output file
+    ]
+    
+    try:
+        subprocess.run(cmd, check=True, stderr=subprocess.PIPE)
+        # Replace the original output with the version that has audio
+        os.replace(temp_output, target_video_path)
+        print(f"Added audio to {target_video_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error while adding audio: {e}")
+        print("Adding audio failed.")
+    except FileNotFoundError:
+        print("FFmpeg not found. Please install FFmpeg to add audio.")
+        print("Adding audio failed.")
+
+    finally:
+        # Clean up the temporary file in case of error
+        if os.path.exists(temp_output):
+            os.remove(temp_output)

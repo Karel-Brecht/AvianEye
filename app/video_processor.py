@@ -21,6 +21,7 @@ class Classification: # TODO: rename as Observation
     taken: bool = False  # If detection is taken as a true detection
     taken_cls: str = None  # The actual class that it has been taken for
     tracking_id: Optional[int] = None  # ID to track object across frames
+    is_interpolated: bool = False  # If the classification is interpolated (i.e., not directly from a detection)
 
 
 class Frame:
@@ -56,9 +57,17 @@ class Frame:
         """Removes all detected species from the frame."""
         self.detected_species = {}
         for classification in self.classifications:
-            classification.taken = False
-            classification.taken_cls = None
-            classification.tracking_id = None
+            if classification.is_interpolated:
+                # Remove classification from the frame
+                self.classifications.remove(classification)
+                # # Remove from detections as well # TODO: should interpolations be added to detections? not the case right now
+                # self.detections.remove(classification.detection)
+                # Entirely delete the classification
+                del classification
+            else:
+                classification.taken = False
+                classification.taken_cls = None
+                classification.tracking_id = None
 
 
 class VideoProcessor:
@@ -82,11 +91,14 @@ class VideoProcessor:
         self.min_detection_confidence = 0.10  # Minimum detection confidence # TODO: is already set in detector model
         self.min_classification_confidence = 0.0  # Minimum classification confidence # TODO: fine-tune this a bit
         self.min_track_seconds = 0.30  # Minimum length of a track in seconds # TODO: fine-tune this a bit
-        self.min_track_frames = None
+        self.max_gap_to_bridge = 5  # Maximum gap size to bridge in frames # TODO: fine-tune this a bit # TODO set in seconds
+        
+        self.min_track_frames = None # gets set in extract_frames()
         
         # Track information
         self.next_track_id = 0
         self.tracks = {}  # track_id -> list of classifications across frames
+        self.track_frame_indices = {}  # track_id -> list of frame indices
 
         self.summary_statistics = None
 
@@ -95,6 +107,7 @@ class VideoProcessor:
         self.frames = []
         self.next_track_id = 0
         self.tracks = {}
+        self.track_frame_indices = {}
         self.summary_statistics = None
 
     def renew_frames(self):
@@ -109,6 +122,7 @@ class VideoProcessor:
                 frame.detected_species = old_frames[i].detected_species
         self.next_track_id = 0
         self.tracks = {}
+        self.track_frame_indices = {}
         self.summary_statistics = None
 
     def remove_detections(self):
@@ -127,6 +141,7 @@ class VideoProcessor:
             frame.remove_detected_species()
             self.next_track_id = 0
             self.tracks = {}
+            self.track_frame_indices = {}
             self.summary_statistics = None
 
     # LOAD VIDEO
@@ -216,6 +231,7 @@ class VideoProcessor:
             if classification.detection.confidence >= self.min_detection_confidence:
                 classification.tracking_id = self.next_track_id
                 self.tracks[self.next_track_id] = [classification]
+                self.track_frame_indices[self.next_track_id] = [0]  # Store frame index
                 self.next_track_id += 1
         
         # Process subsequent frames
@@ -264,6 +280,7 @@ class VideoProcessor:
                 
                 # Update tracking information
                 self.tracks[track_id].append(current_classification)
+                self.track_frame_indices[track_id].append(i)  # Store frame index
                 
                 # Mark as assigned
                 assigned_curr_idxs.add(curr_idx)
@@ -276,13 +293,198 @@ class VideoProcessor:
                     # Create new track
                     current_classification.tracking_id = self.next_track_id
                     self.tracks[self.next_track_id] = [current_classification]
+                    self.track_frame_indices[self.next_track_id] = [i]  # Store frame index
                     self.next_track_id += 1
+
+        # TODO: Bridge gaps in tracking IDs (e.g., if a bird is not detected for a few frames)
+
+    
+    def bridge_track_gaps(self):
+        """Bridge short gaps in tracks by interpolating detections and classifications."""
+        # Create dictionary to map frame index to frame object for faster lookup
+        frame_dict = {i: frame for i, frame in enumerate(self.frames)}
+        
+        # Track IDs that need updating after gap bridging
+        tracks_to_merge = {}  # old_track_id -> new_track_id
+        
+        # Look for potential track continuations (tracks that end then restart)
+        for track_id, frame_indices in self.track_frame_indices.items():
+            # Skip if track is empty
+            if not frame_indices:
+                continue
+                
+            track_end_frame = frame_indices[-1]
+            track_end_classification = self.tracks[track_id][-1]
+            
+            # Look for potential continuations within max_gap_to_bridge frames
+            potential_continuations = []
+            
+            # Search for tracks that start after this one ends
+            for other_track_id, other_frame_indices in self.track_frame_indices.items():
+                if not other_frame_indices or other_track_id == track_id or other_track_id in tracks_to_merge:
+                    continue
+                    
+                other_start_frame = other_frame_indices[0]
+                
+                # Check if the other track starts within the bridging window
+                gap_size = other_start_frame - track_end_frame
+                if 1 <= gap_size <= self.max_gap_to_bridge:
+                    other_start_classification = self.tracks[other_track_id][0]
+                    
+                    # Calculate IoU between end of track and start of potential continuation
+                    iou = calculate_iou(
+                        track_end_classification.detection.bbox,
+                        other_start_classification.detection.bbox
+                    )
+                    
+                    # Check class similarity
+                    class_similarity = 0.0
+                    for class_name, prob in track_end_classification.all_probs.items():
+                        if class_name in other_start_classification.all_probs:
+                            class_similarity += min(prob, other_start_classification.all_probs[class_name])
+                    
+                    # Combined score for IoU and class similarity
+                    continuity_score = iou * 0.7 + class_similarity * 0.3 # TODO: parametrize all weights
+                    
+                    if continuity_score > 0.3:  # Threshold for considering it a continuation
+                        potential_continuations.append((
+                            other_track_id, 
+                            gap_size, 
+                            continuity_score
+                        ))
+            
+            # If we found potential continuations, bridge the gap to the best one
+            if potential_continuations:
+                # Sort by continuity score (highest first)
+                potential_continuations.sort(key=lambda x: x[2], reverse=True)
+                best_continuation = potential_continuations[0]
+                continuation_track_id, gap_size, _ = best_continuation
+                
+                # Create interpolated classifications for the gap
+                self._interpolate_gap(
+                    track_id, 
+                    continuation_track_id, 
+                    track_end_frame, 
+                    self.track_frame_indices[continuation_track_id][0], 
+                    frame_dict
+                )
+                
+                # Mark continuation track for merging
+                tracks_to_merge[continuation_track_id] = track_id
+        
+        # Merge tracks that were connected by bridging
+        self._merge_tracks(tracks_to_merge)
+    
+    def _interpolate_gap(self, track_id1, track_id2, end_frame_idx, start_frame_idx, frame_dict):
+        """Create interpolated classifications for the gap between two tracks."""
+        # Get the last classification of track1 and first classification of track2
+        last_classification = self.tracks[track_id1][-1]
+        first_classification = self.tracks[track_id2][0]
+        
+        # Get bounding boxes
+        start_bbox = last_classification.detection.bbox
+        end_bbox = first_classification.detection.bbox
+        
+        # Get class probabilities
+        start_probs = last_classification.all_probs
+        end_probs = first_classification.all_probs
+        
+        # Number of frames to interpolate
+        gap_size = start_frame_idx - end_frame_idx - 1
+        
+        # Create interpolated classifications for each frame in the gap
+        for i in range(1, gap_size + 1):
+            # Calculate interpolation factor (0.0 to 1.0)
+            t = i / (gap_size + 1)
+            
+            # Interpolate bounding box
+            interpolated_bbox = (
+                int(start_bbox[0] + t * (end_bbox[0] - start_bbox[0])),
+                int(start_bbox[1] + t * (end_bbox[1] - start_bbox[1])),
+                int(start_bbox[2] + t * (end_bbox[2] - start_bbox[2])),
+                int(start_bbox[3] + t * (end_bbox[3] - start_bbox[3]))
+            )
+            
+            # Interpolate confidence
+            interpolated_confidence = (1 - t) * last_classification.detection.confidence + t * first_classification.detection.confidence
+            
+            # Interpolate class probabilities
+            interpolated_probs = {}
+            all_classes = set(start_probs.keys()) | set(end_probs.keys())
+            
+            for class_name in all_classes:
+                start_prob = start_probs.get(class_name, 0.0)
+                end_prob = end_probs.get(class_name, 0.0)
+                interpolated_probs[class_name] = (1 - t) * start_prob + t * end_prob
+            
+            # Determine predicted class (highest probability)
+            predicted_cls = max(interpolated_probs.items(), key=lambda x: x[1])[0]
+            predicted_prob = interpolated_probs[predicted_cls]
+            
+            # Create interpolated detection
+            interpolated_detection = Detection(
+                bbox=interpolated_bbox,
+                confidence=interpolated_confidence,
+                class_name=predicted_cls
+            )
+            
+            # Create interpolated classification
+            interpolated_classification = Classification(
+                detection=interpolated_detection,
+                predicted_cls=predicted_cls,
+                predicted_prob=predicted_prob,
+                all_probs=interpolated_probs,
+                tracking_id=track_id1,
+                is_interpolated=True
+            )
+            
+            # Get the frame for this interpolation
+            frame_idx = end_frame_idx + i
+            frame = frame_dict[frame_idx]
+            
+            # Add interpolated classification to frame
+            frame.classifications.append(interpolated_classification)
+
+            # TODO: add detection to frame as well?
+            
+            # Add to track
+            insert_idx = len(self.tracks[track_id1])
+            self.tracks[track_id1].insert(insert_idx, interpolated_classification)
+            self.track_frame_indices[track_id1].insert(insert_idx, frame_idx)
+    
+    def _merge_tracks(self, tracks_to_merge):
+        """Merge tracks after gap bridging."""
+        for old_track_id, new_track_id in tracks_to_merge.items():
+            # Skip if either track no longer exists
+            if old_track_id not in self.tracks or new_track_id not in self.tracks:
+                continue
+                
+            # Update tracking IDs in all classifications from old track
+            for classification in self.tracks[old_track_id]:
+                classification.tracking_id = new_track_id
+            
+            # Append old track's classifications to new track
+            self.tracks[new_track_id].extend(self.tracks[old_track_id])
+            self.track_frame_indices[new_track_id].extend(self.track_frame_indices[old_track_id])
+            
+            # Sort by frame index
+            combined = list(zip(self.track_frame_indices[new_track_id], self.tracks[new_track_id]))
+            combined.sort(key=lambda x: x[0])
+            
+            # Unzip sorted lists
+            self.track_frame_indices[new_track_id], self.tracks[new_track_id] = zip(*combined)
+            self.track_frame_indices[new_track_id] = list(self.track_frame_indices[new_track_id])
+            self.tracks[new_track_id] = list(self.tracks[new_track_id])
+            
+            # Remove old track
+            del self.tracks[old_track_id]
+            del self.track_frame_indices[old_track_id]
     
     def smooth_classifications(self):
-        """Apply temporal smoothing to classifications based on tracking data."""
+        """Apply temporal smoothing to classifications based on tracking data and filter out short tracks."""
         tracks_to_remove = []
+        
         for track_id, classifications in self.tracks.items():
-
             # If tracking is too short, remove it
             if len(classifications) < self.min_track_frames:
                 # print(f"Track {track_id} is too short, removing it.")
@@ -290,13 +492,17 @@ class VideoProcessor:
                     classification.tracking_id = None
                 tracks_to_remove.append(track_id)
                 continue
-
+                
             # If track has only one detection, no smoothing needed
             if len(classifications) <= 1:
                 continue
                 
             # For each classification in the track
             for i, classification in enumerate(classifications):
+                # Skip smoothing for interpolated classifications
+                if classification.is_interpolated:
+                    continue
+                    
                 # Determine window size (adjust for beginning and end of track)
                 window_start = max(0, i - self.temporal_window_size // 2)
                 window_end = min(len(classifications), i + self.temporal_window_size // 2 + 1)
@@ -305,53 +511,68 @@ class VideoProcessor:
                 # Count class votes weighted by probability
                 class_votes = defaultdict(float)
                 for cls in window:
+                    weight = 1.0
+                    # Reduce weight for interpolated classifications
+                    if cls.is_interpolated:
+                        weight = 0.7 # TODO: parameterize this
+                    
                     for class_name, prob in cls.all_probs.items():
-                        class_votes[class_name] += prob
+                        class_votes[class_name] += prob * weight
                 
                 # Get class with highest votes
                 best_class = max(class_votes.items(), key=lambda x: x[1])
                 
                 # Only update if the weighted vote is confident enough
-                if best_class[1] / len(window) >= self.min_classification_confidence:
-                    # TODO: should this update the predicted_cls and predicted_prob or the taken_cls?
-                    classification.predicted_cls = best_class[0]
-                    classification.predicted_prob = best_class[1] / len(window)
-
-                # TODO: remove tracks that too ambiguous
+                # TODO: This should just always be done
+                # if best_class[1] / len(window) >= self.min_classification_confidence:
+                # TODO: should this update the predicted_cls and predicted_prob or the taken_cls?
+                classification.predicted_cls = best_class[0]
+                classification.predicted_prob = best_class[1] / len(window)
         
         # Remove the short tracks from the tracks dictionary
         for track_id in tracks_to_remove:
-            del self.tracks[track_id]
+            if track_id in self.tracks:
+                del self.tracks[track_id]
+            if track_id in self.track_frame_indices:
+                del self.track_frame_indices[track_id]
 
-
+        # TODO: remove tracks that are too ambiguous
     
     def process_observations(self):
         """Processes the observations to count species with temporal consistency."""
         # Step 1: Assign tracking IDs to detections across frames
         self.assign_tracking_ids()
         
-        # Step 2: Smooth classifications based on temporal consistency
+        # Step 2: Bridge gaps in tracks
+        self.bridge_track_gaps()
+        
+        # Step 3: Smooth classifications based on temporal consistency and filter short tracks
         self.smooth_classifications()
         
-        # Step 3: Count unique individuals and species per frame
+        # Step 4: Count unique individuals and species per frame
         for frame in self.frames:
             # Reset detected species count
             frame.detected_species = {}
             
             # Process only classifications with tracking IDs and sufficient confidence
-            processed_track_ids = set()
+            processed_track_ids = set() # TODO: this is redundant if there is only one classification per track ID per frame
             for classification in frame.classifications:
                 # Skip if no tracking ID or already processed this track in this frame
-                if (classification.tracking_id is None or 
-                    classification.tracking_id in processed_track_ids or
-                    classification.detection.confidence < self.min_detection_confidence or
-                    classification.predicted_prob < self.min_classification_confidence):
+                if (classification.tracking_id is None or
+                    classification.tracking_id in processed_track_ids):
                     continue
+
+                # TODO: I think this should not happen here, this should be done in the smoother
+                # # Skip if no tracking ID or already processed this track in this frame
+                # if (classification.tracking_id is None or 
+                #     classification.tracking_id in processed_track_ids or
+                #     (not classification.is_interpolated and 
+                #      classification.detection.confidence < self.min_detection_confidence) or
+                #     classification.predicted_prob < self.min_classification_confidence):
+                #     continue
                     
                 # Mark this track as processed for this frame
                 processed_track_ids.add(classification.tracking_id)
-
-                # TODO: what is it doing with duplicate track_ids in the same frame
                 
                 # Update species count
                 species = classification.predicted_cls
@@ -373,7 +594,7 @@ class VideoProcessor:
 
 
 
-    
+
     def _generate_summary_statistics(self):
         """Generate summary statistics for the entire video."""
         species_counts = defaultdict(int)
@@ -390,7 +611,9 @@ class VideoProcessor:
             # Count votes for most frequent species in this track
             species_votes = defaultdict(int)
             for c in valid_classifications:
-                species_votes[c.predicted_cls] += 1
+                # Give less weight to interpolated classifications
+                weight = 1 if not c.is_interpolated else 0.7 # TODO: parameterize this
+                species_votes[c.predicted_cls] += weight
             
             # Get most frequently predicted species for this track
             if species_votes:

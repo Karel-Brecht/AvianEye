@@ -4,7 +4,7 @@ from ..operations.detection import Detection
 
 
 @dataclass
-class Observation:  # TODO: rename as Observation
+class Observation:
     """Represents a single detection with its bounding box, confidence, and class name."""
 
     detection: Detection
@@ -28,7 +28,7 @@ class Frame:
         self.detections: list[Detection] = []
         self.observations: list[Observation] = (
             []
-        )  # List of observations (e.g., bird species) # TODO: rename as observations
+        )  # List of observations (e.g., bird species)
         self.detected_species: dict[str, int] = {}  # Dictionary to store species counts
 
     def add_detection(self, detection: Detection):

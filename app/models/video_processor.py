@@ -99,8 +99,12 @@ class VideoProcessor:
         self.process_observations()
 
         # Export summary statistics to JSON file
-        with open("summary_statistics.json", "w") as f:
-            json.dump(self.summary_statistics, f, indent=4)
+        try:
+            with open("summary_statistics.json", "w") as f:
+                json.dump(self.summary_statistics, f, indent=4)
+                print("Summary statistics successfully exported to summary_statistics.json")
+        except Exception as e:
+            print(f"Failed to export summary statistics: {e}")
 
         self.annotator.annotate_species(self.frames)
         self.annotator.annotate_species_counts(self.frames)
@@ -315,6 +319,14 @@ class VideoProcessor:
         # Ensure output path ends with .mp4 extension
         if not output_path.lower().endswith('.mp4'):
             output_path += '.mp4'
+
+        # change filename if already exists
+        if os.path.exists(output_path):
+            base, ext = os.path.splitext(output_path)
+            counter = 1
+            while os.path.exists(output_path):
+                output_path = f"{base}_{counter}{ext}"
+                counter += 1
 
         # Create directory if it doesn't exist
         output_dir = output_path.rsplit('/', 1)[0]

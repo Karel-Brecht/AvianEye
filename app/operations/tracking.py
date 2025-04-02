@@ -192,7 +192,8 @@ class Tracker:
         frame_dict = {i: frame for i, frame in enumerate(frames)}
 
         # Track IDs that need updating after gap bridging
-        tracks_to_merge = {}  # old_track_id -> new_track_id
+        # Ordered dictionary! so that we can merge in progressive order
+        tracks_to_merge = {}  # old_track_id -> new_track_id 
 
         # Look for potential track continuations (tracks that end then restart)
         for track_id, frame_indices in self.track_frame_indices.items():
@@ -212,6 +213,7 @@ class Tracker:
                     not other_frame_indices
                     or other_track_id == track_id
                     or other_track_id in tracks_to_merge
+                    or other_track_id in tracks_to_merge.values()
                 ):
                     continue
 
@@ -236,7 +238,7 @@ class Tracker:
                                 prob, other_start_observation.all_probs[class_name]
                             )
 
-                    # Combined score for IoU and class similarity
+                    # Combined score for IoU and class similarity # TODO: add temporal proximity to score
                     continuity_score = (
                         iou * 0.7 + class_similarity * 0.3
                     )  # TODO: parametrize all weights
@@ -250,22 +252,33 @@ class Tracker:
 
             # If we found potential continuations, bridge the gap to the best one
             if potential_continuations:
-                # Sort by continuity score (highest first)
-                potential_continuations.sort(key=lambda x: x[2], reverse=True)
-                best_continuation = potential_continuations[0]
-                continuation_track_id, gap_size, _ = best_continuation
+
+                # Take best contiuation for smalles gap size elements
+                # first sort by continuity score (ascending)
+                potential_continuations.sort(key=lambda x: x[2])
+                # then iterate over the list and take the last one that has the same gap size
+                best_gap_size = self.max_gap_to_bridge
+                for continuation_track_id, gap_size, continuity_score in potential_continuations:
+                    if gap_size <= best_gap_size:
+                        best_continuation_id = continuation_track_id
+                        best_gap_size = gap_size
 
                 # Create interpolated observations for the gap
                 self._interpolate_gap(
                     track_id,
-                    continuation_track_id,
+                    best_continuation_id,
                     track_end_frame,
-                    self.track_frame_indices[continuation_track_id][0],
+                    self.track_frame_indices[best_continuation_id][0],
                     frame_dict,
                 )
 
                 # Mark continuation track for merging
-                tracks_to_merge[continuation_track_id] = track_id
+                tracks_to_merge[best_continuation_id] = track_id
+
+                # TODO: wouldn't it be better to merge these two tracks immediately here?
+
+                # TODO: Or maybe better, allow multiple merges with the same new_track_id (tracks_to_merge.values())
+                #       but in a second pass allow only the ones with the shortest gap_size
 
         # Merge tracks that were connected by bridging
         self._merge_tracks(tracks_to_merge)
@@ -444,3 +457,5 @@ class Tracker:
                 del self.track_frame_indices[track_id]
 
         # TODO: remove tracks that are too ambiguous
+
+        # TODO: second stage for removing duplicate tracks

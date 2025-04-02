@@ -41,14 +41,11 @@ class VideoProcessor:
             0.5  # IoU threshold for tracking # TODO: fine-tune this a bit
         )
         self.temporal_window_size = 60  # Number of frames to consider for temporal smoothing # TODO: fine-tune this a bit
-        self.min_track_seconds = (
-            0.30  # Minimum length of a track in seconds # TODO: fine-tune this a bit
-        )
-        self.max_gap_to_bridge = 5  # Maximum gap size to bridge in frames # TODO: fine-tune this a bit # TODO set in seconds
+        self.min_track_seconds = 0.5  # Minimum length of a track in seconds # TODO: fine-tune this a bit
+        self.max_seconds_to_bridge = 0.5  # Maximum gap size to bridge in frames # TODO: fine-tune this a bit # TODO set in seconds
         self.min_detection_confidence = 0.10  # Minimum detection confidence # TODO: is already set in detector model
-        self.min_classification_confidence = (
-            0.0  # Minimum classification confidence # TODO: fine-tune this a bit
-        )
+        self.min_classification_confidence = 0.0  # Minimum classification confidence # TODO: fine-tune this a bit
+
         self.tracker = None # Gets set in extract_frames()
 
         self.summary_statistics = None
@@ -84,8 +81,8 @@ class VideoProcessor:
             frame.remove_detected_species()
             self.tracker = Tracker(
                 self.iou_threshold, self.temporal_window_size,
-                int(self.frame_rate * self.min_track_seconds),
-                self.max_gap_to_bridge,
+                int(self.min_track_seconds * self.frame_rate),
+                int(self.max_seconds_to_bridge * self.frame_rate),
                 self.min_detection_confidence,
                 self.min_classification_confidence,
             )
@@ -130,8 +127,8 @@ class VideoProcessor:
         self.frame_rate = cap.get(cv2.CAP_PROP_FPS)
         self.tracker = Tracker(
             self.iou_threshold, self.temporal_window_size,
-            int(self.frame_rate * self.min_track_seconds),
-            self.max_gap_to_bridge,
+            int(self.min_track_seconds * self.frame_rate),
+            int(self.max_seconds_to_bridge * self.frame_rate),
             self.min_detection_confidence,
             self.min_classification_confidence,
         )

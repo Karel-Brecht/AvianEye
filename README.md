@@ -135,6 +135,7 @@ Tracks observations (detections) across frames:
 
 Potential improvements and future work to enhance capabilities and performance.
 
+- Compression for output video file
 - Youtube download should probably not be full-res, already download downscaled, appropriate version
 - Improve object tracking to not create multiple tracks for the same object.
     - Some possible approaches are listed as TODOs in the tracking file but especially this one: _allow multiple merges with the same new_track_id (tracks_to_merge.values()) but in a second pass allow only the ones with the shortest gap_size_

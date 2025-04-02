@@ -88,7 +88,9 @@ A lightweight and fast pre-trained object-detection model.
 
 model weights downloaded at `models/detection_model`
 
-# Run
+# Run the program
+
+In your terminal change directory the cloned repository and activate your python environment (see above). 
 
 Run the program with:
 ```bash
@@ -153,26 +155,25 @@ Potential improvements and future work to enhance capabilities and performance.
 
 # Deployment Strategy
 
-If I were to deploy this in a production environment.
+## If I were to deploy this in a production environment.
 - Containerize the service in a container with the correct environment installed.
 - Load balancing: -> Kubernetes? Nginx?
 - Choose appropriate video resolution to process
 - Handle different resolutoins and aspect ratios
-- Make logs of video's processed, video duration, nr frames, processing time
-- Scalable?
-- Look into licenses of the chosen model, if it can be used for the production environment
-- Optimize model parameters, e.g. set confidence to match desired false-positive - false-negative ratio
-- Process video in chuncks?
+- Make logs of video's processed, video duration, nr frames, processing time, ...
+- Look into licenses of the used models, if they can be used for the production environment
+- Optimize model parameters to match desired false-positive - false-negative ratio
+- Process video in chuncks
 - Relies a lot on the yt-dlp package, there have been occurences that these kind of packages stop working due to Changes on YouTube's side. Important to use a well maintained package.
-- Provide simple API
+- Provide a simple API
 - Call it BirdsAI or BirdsAIview
 
-Adaptations for Real-time analysis
+## Adaptations for Real-time analysis
 - Process video in chuncks
-- Inference must be fast, not every model can be used
-- e.g. YOLOv10 should be faster than YOLOv8
-- Maybe process on lower resolution and skip some frames
-- Train lighter and faster model on accurately labeled data provided with the stronger and slower model
-- End-to-end yolo
-
-
+- Downscale suitable resolution and frame-rate
+- Do detections on an even lower frame-rate and interpolate
+- Implement causal tracking (without knowing the next frames)
+- AI model inference must be fast, use faster models
+    - e.g. use fine-tune an end-to-end yolo model for doing detections and classifications simmulateously
+    - Train lighter and faster model on accurately labeled data provided with the stronger and slower model
+    - When using seperate detection and classification, implement classification of the detections in parallel

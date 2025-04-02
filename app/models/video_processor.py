@@ -40,7 +40,7 @@ class VideoProcessor:
         self.iou_threshold = (
             0.5  # IoU threshold for tracking # TODO: fine-tune this a bit
         )
-        self.temporal_window_size = 30  # Number of frames to consider for temporal smoothing # TODO: fine-tune this a bit
+        self.temporal_window_size = 60  # Number of frames to consider for temporal smoothing # TODO: fine-tune this a bit
         self.min_track_seconds = (
             0.30  # Minimum length of a track in seconds # TODO: fine-tune this a bit
         )
@@ -327,7 +327,7 @@ class VideoProcessor:
         fourcc = cv2.VideoWriter_fourcc(*"XVID")
         out = cv2.VideoWriter(
             output_path, fourcc, self.frame_rate, self.size
-        )  # TODO: what if output path doesn't end on .mp4?
+        )
 
         for frame in self.frames:
             out.write(frame.image)

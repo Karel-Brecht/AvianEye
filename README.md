@@ -112,7 +112,7 @@ Implemented species classification in `app\operations\classification.py`.
 Using the following model from huggingface: [https://huggingface.co/dennisjooo/Birds-Classifier-EfficientNetB2](https://huggingface.co/dennisjooo/Birds-Classifier-EfficientNetB2)
 
 This is a fine-tuned version of the google/efficientnet-b2 model. Aclassifier trained on an augmented version of the _Birds 525_ dataset.
-The link to the original dataset could not be found but is most likely the same as the one from the following link: [https://huggingface.co/datasets/chriamue/bird-species-dataset/tree/main/data](https://huggingface.co/datasets/chriamue/bird-species-dataset/tree/main/data). This dataset contains 525 different species, 84.6k training samples, 2.63k validation samples and 2.63 test samples.
+The link to the original dataset could not be found but is most likely the same as the one from the following link: [https://huggingface.co/datasets/chriamue/bird-species-dataset/tree/main/data](https://huggingface.co/datasets/chriamue/bird-species-dataset/tree/main/data). This dataset contains 525 different species, 84.6k training samples, 2.63k validation samples and 2.63k test samples.
 
 The model is said to have the following accuracy on the dataset:
 - Training: 0.999480
@@ -161,12 +161,12 @@ Potential improvements and future work to enhance capabilities and performance.
 ## If I were to deploy this in a production environment.
 - Containerize the service in a container with the correct environment installed.
 - Load balancing: -> Kubernetes? Nginx?
-- Downscale to an appropriate video resolution
+- Downscale video to an appropriate resolution for processing
 - Make logs of video's processed, video duration, nr frames, processing time, ...
 - Look into licenses of the used models, if they can be used for the production environment
 - Optimize model parameters to match desired false-positive - false-negative ratio
 - Process summary statistics to give a more realistic output (e.g. limit possible species to a curated list of species)
-- Process video in chunks
+- Process large videos in chunks
 - Currently this program relies a lot on the yt-dlp package, there have been occurences that these kind of packages stop working due to Changes on YouTube's side. It is important to use a well maintained package.
 - Provide a simple API
 - Call it BirdsAI or BirdsAIview

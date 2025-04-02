@@ -74,18 +74,6 @@ There seems to be an easier way for ubuntu and macOS by using respectively `apt 
 But i haven't tried this out myself.
 
 
-# YouTube Video Input
-Implemented downloading from youtube in `app\operations\download.py`
-
-Using the yt-dlp package. This is, up to today, a very well maintained package, and has lots of contributors and recent contributions.
-
-# Bird detection
-Implemented bird detection in `app\operations\detection.py`
-
-Using `yolov10n`, a lightweight and fast pre-trained object-detection model.
-
-model weights downloaded at `models/detection_model`
-
 # Run the program
 
 In your terminal change directory the cloned repository and activate your python environment (see above). 
@@ -105,6 +93,18 @@ The detections and species counts are annotated on the video.
 
 A json file will be stored to `./summary_statistics.json`. This contains how many times each bird species has appeared throughout the whole video, along with the average confidence for each species.
 
+
+# YouTube Video Input
+Implemented downloading from youtube in `app\operations\download.py`
+
+Using the yt-dlp package. This is, up to today, a very well maintained package, and has lots of contributors and recent contributions.
+
+# Bird detection
+Implemented bird detection in `app\operations\detection.py`
+
+Using `yolov10n`, a lightweight and fast pre-trained object-detection model.
+
+model weights downloaded at `models/detection_model`
 
 # Species classification
 Implemented species classification in `app\operations\classification.py`.

@@ -1,5 +1,6 @@
 from collections import defaultdict
 import json
+import os
 import cv2
 from PIL import Image
 
@@ -314,6 +315,15 @@ class VideoProcessor:
 
     def export_video(self, output_path: str):
         """Exports the processed video with detections and observations."""
+        # Ensure output path ends with .mp4 extension
+        if not output_path.lower().endswith('.mp4'):
+            output_path += '.mp4'
+
+        # Create directory if it doesn't exist
+        output_dir = output_path.rsplit('/', 1)[0]
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
         fourcc = cv2.VideoWriter_fourcc(*"XVID")
         out = cv2.VideoWriter(
             output_path, fourcc, self.frame_rate, self.size

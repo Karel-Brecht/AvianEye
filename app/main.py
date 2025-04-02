@@ -13,7 +13,7 @@ from app.models.video_processor import VideoProcessor
 
 DEFAULT_YT_URL = "https://www.youtube.com/watch?v=swavE6ZwLJQ"
 
-DEFAULT_OUTPUT_PATH = "./outputvidrun.mp4"
+DEFAULT_OUTPUT_PATH = "./output.mp4"
 
 def main():
 

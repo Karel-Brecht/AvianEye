@@ -9,6 +9,7 @@ class Downloader:
         self.download_path = self.temp_dir.name  # Store files here
         self.cleaned_up = False
 
+        # TODO: shouldn't be downloaded full res if it will be downlscaled anyway
         self.ydl_options = {
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',  # Ensures MP4 format
             'outtmpl': os.path.join(self.download_path, '%(title)s.%(ext)s'),  # Saves as title.mp4

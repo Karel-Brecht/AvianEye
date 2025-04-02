@@ -144,7 +144,7 @@ class VideoProcessor:
                 break
 
             # Resize the frame to a standard size
-            frame = cv2.resize(frame, self.size)
+            frame = cv2.resize(frame, self.size) # TODO: handle different aspect ratios
 
             self.frames.append(Frame(frame_id, frame))
             frame_id += 1

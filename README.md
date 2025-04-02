@@ -75,16 +75,40 @@ But i haven't tried this out myself.
 
 
 # YouTube Video Input
-For youtube video input I am using the yt-dlp package. This is, up to today, very well maintained, and has lots of contributors and recent contributions.
+Implemented downloading from youtube in `app\operations\download.py`
 
-# Object detection
+Using the yt-dlp package. This is, up to today, a very well maintained package, and has lots of contributors and recent contributions.
+
+# Bird detection
+Implemented bird detection in `app\operations\detection.py`
+
 Using yolov10n
 
 A lightweight and fast pre-trained object-detection model.
 
 model weights downloaded at `models/detection_model`
 
+# Run
+
+Run the program with:
+```bash
+python ./app/main.py yt-link -o output_file_path.mp4
+```
+
+Both arguments are optional, defaulting to the following
+```bash
+python ./app/main.py https://www.youtube.com/watch?v=swavE6ZwLJQ -o ./output.mp4
+```
+
+The output mp4 file is for the moment scaled to (1280, 720) pixels and contains the original audio.
+The detections and species counts are annotated on the video.
+
+A json file will be stored to `./summary_statistics.json`. This contains how many times each bird species has appeared throughout the whole video, along with the average confidence for each species.
+
+
 # Species classification
+Implemented species classification in `app\operations\classification.py`.
+
 Using the following model from huggingface: [https://huggingface.co/dennisjooo/Birds-Classifier-EfficientNetB2](https://huggingface.co/dennisjooo/Birds-Classifier-EfficientNetB2)
 
 Fine tuned version of the google/efficientnet-b2 model. Aclassifier trained on an augmented version of the _Birds 525_ dataset.
@@ -98,6 +122,9 @@ The model is said to have the following accuracy on the dataset:
 More info about the model can be found on the webpage, of which I have included a copy at `models\classification_model\model_webpage`
 
 model downloaded at `models/classification_model`
+
+# Object tracking
+Implemented object tracking in `app\operations\tracking.py` with lots of help from _claude 3.7 Sonnet_.
 
 # Next Steps
 

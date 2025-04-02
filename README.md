@@ -126,6 +126,11 @@ model downloaded at `models/classification_model`
 # Object tracking
 Implemented object tracking in `app\operations\tracking.py` with lots of help from _claude 3.7 Sonnet_.
 
+Tracks observations (detections) across frames:
+- Groups observations across neigbouring frames together as one track.
+- Afterwards, ridges temporal gaps between tracks by interpolating the observations and merging them together as one track.
+- Finally, smooths out observation classes within the same track.
+
 # Next Steps
 
 Potential improvements and future work to enhance capabilities and performance.

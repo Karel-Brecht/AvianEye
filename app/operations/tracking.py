@@ -23,7 +23,11 @@ class Tracker:
 
 
     def assign_tracking_ids(self, frames: list[Frame]):
-        """Assign tracking IDs to detections across frames based on IoU, ensuring only one observation per track ID per frame."""
+        """
+        Assign tracking IDs to detections across frames based on IoU, ensuring only one observation per track ID per frame.
+        
+        A track is a sequence of observations that are linked together based on their spatial and temporal proximity.
+        """
         if not frames:
             return
 

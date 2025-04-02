@@ -100,7 +100,7 @@ Both arguments are optional, defaulting to the following
 python ./app/main.py https://www.youtube.com/watch?v=swavE6ZwLJQ -o ./output.mp4
 ```
 
-The output mp4 file is for the moment scaled to (1280, 720) pixels and contains the original audio.
+The output mp4 file is downscaled and contains the original audio.
 The detections and species counts are annotated on the video.
 
 A json file will be stored to `./summary_statistics.json`. This contains how many times each bird species has appeared throughout the whole video, along with the average confidence for each species.
@@ -130,7 +130,6 @@ Implemented object tracking in `app\operations\tracking.py` with lots of help fr
 
 Potential improvements and future work to enhance capabilities and performance.
 
-- Allow arbitrary aspect ratios, for now always resized to 1280x750
 - Youtube download should probably not be full-res, already download downscaled, appropriate version
 - Improve object tracking to not create multiple tracks for the same object.
     - Some possible approaches are listed as TODOs in the tracking file but especially this one: _allow multiple merges with the same new_track_id (tracks_to_merge.values()) but in a second pass allow only the ones with the shortest gap_size_
@@ -156,7 +155,6 @@ Potential improvements and future work to enhance capabilities and performance.
 - Containerize the service in a container with the correct environment installed.
 - Load balancing: -> Kubernetes? Nginx?
 - Downscale to an appropriate video resolution
-- Handle arbitrary resolutoins and aspect ratios
 - Make logs of video's processed, video duration, nr frames, processing time, ...
 - Look into licenses of the used models, if they can be used for the production environment
 - Optimize model parameters to match desired false-positive - false-negative ratio

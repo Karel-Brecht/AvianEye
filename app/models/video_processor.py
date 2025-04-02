@@ -10,7 +10,7 @@ from ..operations.classification import BirdClassifier
 from ..operations.tracking import Tracker
 from ..visualization.annotation import Annotator
 from ..models.data_classes import Frame
-from ..utils.utils import add_audio_to_video
+from ..utils.utils import add_audio_to_video, resize_to_fit
 
 
 class VideoProcessor:
@@ -23,7 +23,7 @@ class VideoProcessor:
         detector: BirdDetector,
         classifier: BirdClassifier,
     ):
-        self.size = (1280, 720)
+        self.size = (1280, 1280) # Default size where frames should fit in, gets updated with appropriate aspect ratio
 
         self.video_link = video_link
         self.downloader = downloader
@@ -143,8 +143,10 @@ class VideoProcessor:
             if not ret:
                 break
 
-            # Resize the frame to a standard size
-            frame = cv2.resize(frame, self.size) # TODO: handle different aspect ratios
+            # Resize the to a lower resolution for faster processing
+            frame, width, height = resize_to_fit(frame, self.size[0], self.size[1])
+            if width > 0 and height > 0:
+                self.size = (width, height) # set file size to the first frame size # TODO: do this more elegantly
 
             self.frames.append(Frame(frame_id, frame))
             frame_id += 1

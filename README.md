@@ -130,6 +130,27 @@ Implemented object tracking in `app\operations\tracking.py` with lots of help fr
 
 Potential improvements and future work to enhance capabilities and performance.
 
+- Allow multiple aspect ratios, for now always resized to 1280x750
+- Youtube download should probably not be full-res, already download downscaled, appropriate version
+- Improve object tracking to not create multiple tracks for the same object.
+    - Some possible approaches are listed as TODOs in the tracking file but especially this one: _allow multiple merges with the same new_track_id (tracks_to_merge.values()) but in a second pass allow only the ones with the shortest gap_size_
+- Process summary statistics to give a more realistic output
+- Parametrize the remaining hard-coded parameters, marked with TODOs
+- Group all processing parameters togetter in a clear config file
+- Play around with parameters and optimize for the kind of target videos
+- Fine tune the detection and classification models
+    - possibly create dataset using the last best version of this program so that you can leverage the interpolated observations to get even better fine-tuned models.
+- Put extra measures for deleting duplicate observations
+    - Removing observations of which the corners allign too well
+    - Removing observations that, over time, are too similar. (right now only duplicates are removed by if the start of a track is too similar to an already existing track)
+- Remove tracks that are too ambiguous over time: e.g. the class probabilities differ too much over time
+- Extract frames faster from video
+- Dynamically load video frames for larger files
+    - Right now the program will most likely crash when video files are too large.
+- Enable parallellization for detections and classifications
+- Write python tests!
+- Provide option to do the detections on a lower frame rate and interpolate them.
+
 # Deployment Strategy
 
 If I were to deploy this in a production environment.
@@ -152,5 +173,6 @@ Adaptations for Real-time analysis
 - e.g. YOLOv10 should be faster than YOLOv8
 - Maybe process on lower resolution and skip some frames
 - Train lighter and faster model on accurately labeled data provided with the stronger and slower model
+- End-to-end yolo
 
 

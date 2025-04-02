@@ -13,7 +13,7 @@ from transformers import EfficientNetImageProcessor, EfficientNetForImageClassif
 
 # try open image from ./bird_imgs/image.png
 try:
-    img = Image.open("bird_imgs/bluejay.png")
+    img = Image.open("notebooks/bird_imgs/bluejay.png")
 except FileNotFoundError:
     print("Image file not found. Please check the path.")
     exit()
